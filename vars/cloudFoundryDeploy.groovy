@@ -18,7 +18,7 @@ import groovy.transform.Field
     'smokeTestScript',
     'smokeTestStatusCode',
     'stashContent']
-@Field Map CONFIG_KEY_COMPATIBILITY = [cloudFoundry: [apiEndpoint: 'cfApiEndpoint', appName:'cfAppName', credentialsId: 'cfCredentialsId', manifest: 'cfManifest', org: 'cfOrg', space: 'cfSpace']]
+@Field Map CONFIG_KEY_COMPATIBILITY = [cloudFoundry: [apiEndpoint: 'cfApiEndpoint', appName:'cfAppName', credentialsId: 'cfCredentialsId', manifest: 'cfManifest', org: 'cfOrg', space: 'cfSpace', varsfile : 'varsfile']]
 @Field Set PARAMETER_KEYS = STEP_CONFIG_KEYS
 
 void call(Map parameters = [:]) {
@@ -129,13 +129,20 @@ def deployCfNative (config) {
                 error "[${STEP_NAME}] ERROR: No manifest file ${config.cloudFoundry.manifest} found."
             }
         }
+        if (config.cloudFoundry.varsfile == null || config.cloudFoundry.varsfile == ''){
+             
+            extraparam=''
+        }
+        else{
+            extraparam="--vars-file ${config.cloudFoundry.varsfile}"
+        }
 
         sh """#!/bin/bash
             set +x  
             export HOME=${config.dockerWorkspace}
             cf login -u \"${username}\" -p '${password}' -a ${config.cloudFoundry.apiEndpoint} -o \"${config.cloudFoundry.org}\" -s \"${config.cloudFoundry.space}\"
             cf plugins
-            cf ${deployCommand} ${config.cloudFoundry.appName?"\"${config.cloudFoundry.appName}\"":''} -f \"${config.cloudFoundry.manifest}\" ${config.smokeTest}"""
+            cf ${deployCommand} ${config.cloudFoundry.appName?"\"${config.cloudFoundry.appName}\"":''} -f \"${config.cloudFoundry.manifest}\" '${extraparam}' ${config.smokeTest}"""
         def retVal = sh script: "cf app \"${config.cloudFoundry.appName}-old\"", returnStatus: true
         if (retVal == 0) {
             sh "cf delete \"${config.cloudFoundry.appName}-old\" -r -f"
